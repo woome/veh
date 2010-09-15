@@ -1,33 +1,54 @@
 import sys
 import os
-import ConfigParser
+from ConfigParser import ConfigParser
 from os.path import exists as pathexists
 from os.path import splitext
 from subprocess import Popen
 
-def make_venv(repo, stateconf):
+class Exists(Exception):
+    """File exists"""
+    pass
+
+class ConfigMissing(Exception):
+    """File exists"""
+    pass
+
+
+def make_venv(repo):
     """Make a virtualenv for the specified repo"""
     # TODO read a user or site wide config file for whether to use virtualenvwrapper
     # could have a "make virtualenv config with a possible 'internal' value"
-    p = Popen(["mkvirtualenv", "%s/.venv" % repo])
+    p = Popen(["virtualenv", "%s/.venv" % repo])
     p.wait()
 
 def venv(repo):
     """Check the repo has a venv"""
 
-    # Why do we need a state file again?
-    stateconf = "%s/.vehstate.conf" % repo
-    if not pathexists(stateconf):
-        make_venv(repo, stateconf)
+    if pathexists("%s/.venv" % repo):
+        # TODO: In this case we should test the version of these things
+        return
 
-    config = ConfigParser.ConfigParser()
-    with open(stateconf) as fd:
-        config.readfp(fd)
-    vepath = config.get("ve", "path")
-    print vepath
+    # Make the venv
+    make_venv(repo)
+    cfgfile = "%s/.veh.conf" % repo
+    if not pathexists(cfgfile):
+        raise ConfigMissing(cfgfile)
 
+    cfg = ConfigParser()
+    cfg.read(cfgfile)
 
-
+    # Install each package in the venv
+    packages = cfg.items("packages")
+    for package in packages:
+        pip = Popen([
+                "bash",
+                "-c",
+                "source %s/.venv/bin/activate ; pip install -U %s" % (
+                    repo,
+                    package[1]
+                    )
+                ])
+        pip.wait()
 
 def edit_file(filename):
     """Open the filename in the editor.
@@ -55,10 +76,6 @@ def edit_file(filename):
                 os.remove(filename)
             os.rename(tempfilename, filename)
 
-class Exists(Exception):
-    """File exists"""
-    pass
-
 CFG_TEMPLATE="""[packages]
 # enter package names here like
 #   package = packagename
@@ -73,6 +90,7 @@ CFG_TEMPLATE="""[packages]
 
 # End
 """
+
 def install(repo):
     """Install a veh config file
 
@@ -93,32 +111,62 @@ def edit(repo):
     if pathexists(cfgfile):
         edit_file(cfgfile)
 
+
+from cmd import Cmd
+
+class VehCmd(Cmd):
+    repo = None
+    def do_install(self, *arg):
+        """Install a virtualenv for the repository.
+Actually installs just the config file. The venv is made on first use.
+"""
+        install(self.repo)
+
+    def do_edit(self, *arg):
+        """Edit the repositorys veh config file.
+Opens VISUAL or EDITOR or /usr/bin/edit on your repositorys config file.
+"""
+        edit(self.repo)
+
+    def do_cd(self, *arg):
+        """Change directory into the repository.
+First checks that the virtualenv for the repository has been built and builds
+if necessary.
+Changes directory and execs the user's SHELL.
+"""
+        venv(self.repo)
+        os.chdir(self.repo)
+        os.execl(os.environ["SHELL"])
+
+    def do_noop(self, *arg):
+        """No-op. Just checks the virtualenv.
+"""
+        venv(self.repo)
+        
+
 def main():
+    from StringIO import StringIO
+    cmdproc = VehCmd(StringIO())
+
     from optparse import OptionParser
     p = OptionParser()
     o,a = p.parse_args(sys.argv[1:])
 
-    # We ought to check the repo argument here
-    repo = a.pop(0)
+    arg = a.pop(0)
 
-    # Now run the command
-    command = a.pop(0)
-    if command == "cd":
-        os.chdir(repo)
-        os.execl(os.environ["SHELL"])
-    elif command == "noop":
-        venv(repo)
-    elif command == "install":
-        install(repo)
-    elif command == "edit":
-        edit(repo)
+    if arg == "help":
+        cmdproc.onecmd("help%s" % ((" %s" % "".join(a)) if a else ""))
     else:
-        print "unknown command"
+        # We ought to check the repo argument here
+        repo = arg
+        cmdproc.repo = repo
+
+        # Now run the command
+        command = a.pop(0)
+        cmdproc.onecmd(command)
 
 
 if __name__== "__main__":
     main()
 
 # End
-
-    
