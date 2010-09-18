@@ -154,6 +154,11 @@ def main():
     p = OptionParser()
     o,a = p.parse_args(sys.argv[1:])
 
+    if len(a) < 1:
+        cmdproc.onecmd("help")
+        return
+
+    # Get the first arg... might be help or a repo name
     arg = a.pop(0)
 
     if arg == "help":
