@@ -1,0 +1,4 @@
+include AUTHORS
+include README.creole
+include COPYING
+include src 

@@ -1,0 +1,8 @@
+= veh - tie virtualenvs to mercurial repos =
+
+This is a virtualenv dependancy system for repositorys. 
+
+Store a config file with a list of dependancies in the repository and
+then use veh to access the repository, cd, run programs, etc...
+
+
