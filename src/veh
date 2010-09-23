@@ -115,35 +115,62 @@ def edit(repo):
 
 
 from cmd import Cmd
+from cmd import Cmd
+class SysArgsCmd(Cmd):
+    """Let's you use cmd with arg lists"""
 
-class VehCmd(Cmd):
+    def onecmd(self, args):
+        """Make a onecmd that operates on an array"""
+        cmdarg = args[0]
+        try:
+            func = getattr(self, 'do_' + cmdarg)
+        except AttributeError:
+            return self.default(args[1:])
+        else:
+            return func(args[1:])
+
+    def do_help(self, arg):
+        """A version of help that deals with the array args"""
+        return Cmd.do_help(self, " ".join(arg))
+
+class VehCmd(SysArgsCmd):
     repo = None
-    def do_install(self, *arg):
+
+    def do_install(self, arg):
         """Install a virtualenv for the repository.
-Actually installs just the config file. The venv is made on first use.
-"""
-        install(self.repo)
+        Actually installs just the config file. The venv is made on first use.
+        """
+        install(arg[0])
 
-    def do_edit(self, *arg):
+    def do_edit(self, arg):
         """Edit the repositorys veh config file.
-Opens VISUAL or EDITOR or /usr/bin/edit on your repositorys config file.
-"""
-        edit(self.repo)
+        Opens VISUAL or EDITOR or /usr/bin/edit on your repositorys config file.
+        """
+        edit(arg[0])
 
-    def do_cd(self, *arg):
+    def do_check(self, arg):
+        """Report whether the repository has an associated veh.
+        """
+        if pathexists("%s/.venv/bin/activate" % arg[0]):
+            print "veh found a virtualenv"
+        else:
+            print "veh found no virtualenv"
+            return 1
+
+    def do_cd(self, arg):
         """Change directory into the repository.
-First checks that the virtualenv for the repository has been built and builds
-if necessary.
-Changes directory and execs the user's SHELL.
-"""
-        venv(self.repo)
-        os.chdir(self.repo)
+        First checks that the virtualenv for the repository has been built and builds
+        if necessary.
+        Changes directory and execs the user's SHELL.
+        """
+        venv(arg[0])
+        os.chdir(arg[0])
         os.execl(os.environ["SHELL"])
 
-    def do_noop(self, *arg):
+    def do_noop(self, arg):
         """No-op. Just checks the virtualenv.
-"""
-        venv(self.repo)
+        """
+        venv(arg[0])
         
 
 def main():
@@ -154,23 +181,10 @@ def main():
     p = OptionParser()
     o,a = p.parse_args(sys.argv[1:])
 
-    if len(a) < 1:
-        cmdproc.onecmd("help")
-        return
-
-    # Get the first arg... might be help or a repo name
-    arg = a.pop(0)
-
-    if arg == "help":
-        cmdproc.onecmd("help%s" % ((" %s" % "".join(a)) if a else ""))
-    else:
-        # We ought to check the repo argument here
-        repo = arg
-        cmdproc.repo = repo
-
-        # Now run the command
-        command = a.pop(0)
-        cmdproc.onecmd(command)
+    # Now run the command
+    ret = cmdproc.onecmd(a)
+    if ret:
+        sys.exit(ret)
 
 
 if __name__== "__main__":
