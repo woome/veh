@@ -27,8 +27,8 @@ Editing the config file:
 veh [-R repositorydir] edit
 }}}
 
-starts your VISUAL or EDITOR on the veh config file. Editing operates
-on a copy of the file.
+starts your {{{VISUAL}}} or {{{EDITOR}}} on the veh config
+file. Editing operates on a copy of the file.
 
 
 Running a shell session:
