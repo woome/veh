@@ -16,21 +16,28 @@ class ConfigMissing(Exception):
     pass
 
 
+def _popencmd(cmd):
+    """Simple Popen wrapper"""
+    print " ".join(cmd)
+    p = Popen(cmd)
+    p.wait()    
+    return p
+
 def make_venv(repo):
     """Make a virtualenv for the specified repo"""
+    from os.path import expanduser
     # TODO read a user or site wide config file for whether to use virtualenvwrapper
     # could have a "make virtualenv config with a possible 'internal' value"
-    p = Popen(["virtualenv", "%s/.venv" % repo])
-    p.wait()
+    _popencmd(["virtualenv", "%s/.venv" % repo])
+    with open("%s/.venv/.startup_rc" % repo, "w") as out:
+        print >>out, "source %s\nsource %s\n" % (
+            expanduser("~/.bashrc"),
+            "%s/.venv/bin/activate" % repo
+            )
+            
 
-def venv(repo):
-    """Check the repo has a venv"""
-
-    if pathexists("%s/.venv" % repo):
-        # TODO: In this case we should test the version of these things
-        return
-
-    # Make the venv
+def fill_venv(repo):
+    """Install packages into the venv"""
     make_venv(repo)
     cfgfile = "%s/.veh.conf" % repo
     if not pathexists(cfgfile):
@@ -40,17 +47,20 @@ def venv(repo):
     cfg.read(cfgfile)
 
     # Install each package in the venv
+    venviron = "%s/.venv" % repo
     packages = cfg.items("packages")
     for package in packages:
-        pip = Popen([
-                "bash",
-                "-c",
-                "source %s/.venv/bin/activate ; pip install -U %s" % (
-                    repo,
-                    package[1]
-                    )
-                ])
-        pip.wait()
+        package_name = package[1]
+        # Use pip to install into the venv
+        pip = _popencmd(["pip", "install", "-E", venviron, package_name])
+
+def venv(repo):
+    """Make the repos venv"""
+
+    venvdir = "%s/.venv" % repo
+    if not pathexists(venvdir):
+        fill_venv(repo)
+    
 
 def edit_file(filename):
     """Open the filename in the editor.
@@ -61,7 +71,12 @@ def edit_file(filename):
     from tempfile import mkstemp
     try:
         fd, tempfilename = mkstemp(suffix=".conf", text=True)
-        print os.write(fd, CFG_TEMPLATE + "\n")
+        data = CFG_TEMPLATE
+        if pathexists(filename):
+            with open(filename) as srcfd:
+                data = srcfd.read()
+
+        print os.write(fd, data)
         os.close(fd)
     except Exception, e:
         print >>sys.stderr, "problem making temp file: " + str(e)
@@ -112,10 +127,12 @@ def edit(repo):
     cfgfile = "%s/.veh.conf" % repo
     if pathexists(cfgfile):
         edit_file(cfgfile)
+    else:
+        print >>sys.stderr, "%s does not exist" % cfgfile
 
 
 from cmd import Cmd
-from cmd import Cmd
+
 class SysArgsCmd(Cmd):
     """Let's you use cmd with arg lists"""
 
@@ -136,55 +153,92 @@ class SysArgsCmd(Cmd):
 class VehCmd(SysArgsCmd):
     repo = None
 
+    def __init__(self, **kwargs):
+        from StringIO import StringIO
+        Cmd.__init__(self, StringIO())
+        self.opts = kwargs
+
+    def _findroot(self):
+        import subprocess
+        p = subprocess.Popen(["hg", "root"], stdout=subprocess.PIPE)
+        p.wait()
+        hgroot = p.communicate()[0]
+        return hgroot.strip()
+
+    def _getroot(self):
+        from os.path import realpath
+        from os.path import expanduser
+        from os import getcwd
+        foundroot = self._findroot()
+        root = self.opts.get("root") or foundroot
+        return realpath(expanduser(root))
+
     def do_install(self, arg):
         """Install a virtualenv for the repository.
         Actually installs just the config file. The venv is made on first use.
         """
-        install(arg[0])
+        install(self._getroot())
 
     def do_edit(self, arg):
         """Edit the repositorys veh config file.
         Opens VISUAL or EDITOR or /usr/bin/edit on your repositorys config file.
         """
-        edit(arg[0])
+        edit(self._getroot())
 
     def do_check(self, arg):
         """Report whether the repository has an associated veh.
         """
-        if pathexists("%s/.venv/bin/activate" % arg[0]):
-            print "veh found a virtualenv"
+        root = self._getroot()
+        vehenv = "%s/.venv/bin/activate" % root
+        if pathexists(vehenv):
+            print root
         else:
-            print "veh found no virtualenv"
             return 1
 
-    def do_cd(self, arg):
-        """Change directory into the repository.
+    def do_shell(self, shellcmd):
+        """Start a shell inside the venv'd repository possibly running shellcmd.
+
         First checks that the virtualenv for the repository has been built and builds
         if necessary.
-        Changes directory and execs the user's SHELL.
+
+        Changes directory and spawns the user's SHELL.
         """
-        venv(arg[0])
-        os.chdir(arg[0])
-        os.execl(os.environ["SHELL"])
+        root = self._getroot()
+        venv(root)
+        command = [os.environ["SHELL"], "--rcfile", "%s/.venv/.startup_rc" % root]
+        if shellcmd:
+            command += ["-c", " ".join(shellcmd)]
+        _popencmd(command)
 
     def do_noop(self, arg):
         """No-op. Just checks the virtualenv.
         """
-        venv(arg[0])
+        venv(self._getroot())
         
 
 def main():
-    from StringIO import StringIO
-    cmdproc = VehCmd(StringIO())
-
     from optparse import OptionParser
     p = OptionParser()
+    p.add_option(
+        "-R",
+        "--repository",
+        dest="root",
+        help="specify the root of the veh protected repository"
+        )
     o,a = p.parse_args(sys.argv[1:])
 
+    # Make the processor
+    cmdproc = VehCmd(**o.__dict__)
+
     # Now run the command
-    ret = cmdproc.onecmd(a)
-    if ret:
-        sys.exit(ret)
+    try:
+        ret = cmdproc.onecmd(a)
+    except IndexError:
+        print >>sys.stderr, "not enough arguments. Ask for help ?"
+    else:
+        if ret:
+            sys.exit(ret)
+
 
 
 if __name__== "__main__":

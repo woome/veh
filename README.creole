@@ -1,8 +1,65 @@
 = veh - tie virtualenvs to mercurial repos =
 
-This is a virtualenv dependancy system for repositorys. 
+This is a virtualenv dependancy system for mercurial repository. 
 
-Store a config file with a list of dependancies in the repository and
-then use veh to access the repository, cd, run programs, etc...
+Store a config file with a list of python dependancies in the
+repository and then use veh to run a shell with the appropriate venv,
+etc..
 
 
+== Commands you can use ==
+
+Installing a veh for the repo:
+
+{{{
+veh [-R repository-dir] install
+}}}
+
+puts the venv config file in the repository.
+
+Using {{{-R repository-dir}}} let's you specify a directory, otherwise
+it's the directory you're in (which must be a mercurial repository).
+
+
+Editing the config file:
+
+{{{
+veh [-R repositorydir] edit
+}}}
+
+starts your VISUAL or EDITOR on the veh config file. Editing operates
+on a copy of the file.
+
+
+Running a shell session:
+
+{{{
+veh [-R repositorydir] shell
+}}}
+
+starts an interactive subshell with the virtualenv activated.
+
+Alternately you can pass a command to run:
+
+{{{
+veh [-R repositorydir] shell -- start_server
+}}}
+
+the {{{start_server}}} command is run inside the virtualenv as if by:
+
+{{{
+bash -c 'start_server'
+}}}
+
+When the command exits, the virtualenv shell will be destroyed.
+
+
+== Limitations ==
+
+veh is limited to bash as a shell right now. This is because veh needs
+to write a shell startup file which pulls in the user's startup and
+the virtualenv startup and the only shell for which I've coded this
+support is bash.
+
+I'm pretty sure other shells could be added or some other mechanism
+for starting the virtualenv in a spawned subshell found.
