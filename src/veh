@@ -195,6 +195,20 @@ class VehCmd(SysArgsCmd):
         else:
             return 1
 
+    def do_lspackages(self, arg):
+        """List the packages specified in the veh config"""
+        
+        root = self._getroot()
+        cfgfile = "%s/.veh.conf" % root
+        if not pathexists(cfgfile):
+            raise ConfigMissing(cfgfile)
+
+        cfg = ConfigParser()
+        cfg.read(cfgfile)
+        for p in cfg.items("packages"):
+            print "%s %s" % p
+        
+
     def do_clear(self, arg):
         """Blow away the virtualenv."""
         root = self._getroot()
