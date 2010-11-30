@@ -195,6 +195,20 @@ class VehCmd(SysArgsCmd):
         else:
             return 1
 
+    def do_clear(self, arg):
+        """Blow away the virtualenv."""
+        root = self._getroot()
+        # delete the dir
+        _popencmd(["rm", "-rf", "%s/.venv" % root])
+
+    def do_rebuild(self, arg):
+        """Blow away and rebuild the virtualenv."""
+        root = self._getroot()
+        # delete the dir
+        _popencmd(["rm", "-rf", "%s/.venv" % root])
+        # Rebuild it.
+        venv(root)
+
     def do_shell(self, shellcmd):
         """Start a shell inside the venv'd repository possibly running shellcmd.
 
