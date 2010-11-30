@@ -53,6 +53,20 @@ bash -c 'start_server'
 
 When the command exits, the virtualenv shell will be destroyed.
 
+Clearing the virtualenv:
+
+{{{
+veh [-R repositorydir] clear
+}}}
+
+just does an {{{rm -rf}}} on the virtualenv.
+
+Rebuilding also clears but immediately rebuilds:
+
+{{{
+veh [-R repositorydir] rebuild
+}}}
+
 
 == Limitations ==
 
