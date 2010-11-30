@@ -95,15 +95,19 @@ def edit_file(filename):
 
 CFG_TEMPLATE="""[packages]
 # enter package names here like
-#   package = packagename
-# the package names are passed directly to pip.
+#   packagelabel = packagename
+#
+# The package name on the right are passed directly to pip.
+# The package label is not used right now.
+#
 # This makes it easy to use either a pypi name:
-#   package = packagename
+#   packagelabel = packagename
+#
 # or a url:
-#   package = http://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.4.9.tar.gz#md5=c49067cab242b5ff8c7b681a5a99533a
+#   packagelabel = http://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.4.9.tar.gz#md5=c49067cab242b5ff8c7b681a5a99533a
+#
 # or a vc reference:
-#   package = hg+http://domain/repo
-
+#   packagelabel = hg+http://domain/repo
 
 # End
 """
