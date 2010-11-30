@@ -67,6 +67,12 @@ Rebuilding also clears but immediately rebuilds:
 veh [-R repositorydir] rebuild
 }}}
 
+You can also list the packages that are declred in the config file:
+
+{{{
+veh [-R repositorydir] lspackages
+}}}
+
 
 == Limitations ==
 
