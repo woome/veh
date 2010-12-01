@@ -67,6 +67,14 @@ Rebuilding also clears but immediately rebuilds:
 veh [-R repositorydir] rebuild
 }}}
 
+Refresh just tries to re-get each package, without the initial trashing of the virtualenv:
+
+{{{
+veh [-R repositorydir] refresh
+}}}
+
+This is useful for adding packages.
+
 You can also list the packages that are declred in the config file:
 
 {{{

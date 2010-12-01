@@ -28,7 +28,7 @@ def make_venv(repo):
     from os.path import expanduser
     # TODO read a user or site wide config file for whether to use virtualenvwrapper
     # could have a "make virtualenv config with a possible 'internal' value"
-    _popencmd(["virtualenv", "%s/.venv" % repo])
+    _popencmd(["virtualenv", "--no-site-packages", "%s/.venv" % repo])
     with open("%s/.venv/.startup_rc" % repo, "w") as out:
         print >>out, "source %s\nsource %s\n" % (
             expanduser("~/.bashrc"),
@@ -37,8 +37,12 @@ def make_venv(repo):
             
 
 def fill_venv(repo):
-    """Install packages into the venv"""
-    make_venv(repo)
+    """Install packages into the venv.
+
+    Makes the venv if it needs to."""
+    if not pathexists("%s/.venv" % repo):
+        make_venv(repo)
+
     cfgfile = "%s/.veh.conf" % repo
     if not pathexists(cfgfile):
         raise ConfigMissing(cfgfile)
@@ -226,6 +230,11 @@ class VehCmd(SysArgsCmd):
         _popencmd(["rm", "-rf", "%s/.venv" % root])
         # Rebuild it.
         venv(root)
+
+    def do_refresh(self, arg):
+        """Refresh all packages"""
+        root = self._getroot()
+        fill_venv(root)
 
     def do_shell(self, shellcmd):
         """Start a shell inside the venv'd repository possibly running shellcmd.
