@@ -50,7 +50,13 @@ def make_venv(repo):
             expanduser("~/.bashrc"),
             "%s/.venv/bin/activate" % repo
             )
-            
+
+
+# Packages that we should force easy_install for.
+# This should probably be configurable inside veh.
+FORCE_EASY_INSTALL = [
+    "egenix-mx-base", # see http://bitbucket.org/ianb/pip/issue/40/package-egenix-mx-base-cant-be-installed-with
+    ]            
 
 def fill_venv(repo):
     """Install packages into the venv.
@@ -71,8 +77,13 @@ def fill_venv(repo):
     packages = cfg.items("packages")
     for package in packages:
         package_name = package[1]
-        # Use pip to install into the venv
-        pip = _popencmd(["pip", "install", "-E", venviron, package_name])
+
+        # Check whether pip can't install it.
+        if package[0] in FORCE_EASY_INSTALL or package_name in FORCE_EASY_INSTALL:
+            ez = _popencmd(["%s/.venv/bin/easy_install" % repo, package_name])
+        else:
+            # Use pip to install into the venv
+            pip = _popencmd(["pip", "install", "-E", venviron, package_name])
 
 def venv(repo):
     """Make the repos venv"""
