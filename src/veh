@@ -242,7 +242,16 @@ class VehCmd(SysArgsCmd):
         cfg.read(cfgfile)
         for p in cfg.items("packages"):
             print "%s %s" % p
-        
+
+    def do_active(self, arg):
+        """Is the virtualenv active? print the path if it is."""
+        venv = os.environ.get("VIRTUAL_ENV")
+        root = self._getroot()
+
+        if venv == "%s/.venv" % root:
+            print venv
+        else:
+            return 1
 
     def do_clear(self, arg):
         """Blow away the virtualenv."""
