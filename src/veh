@@ -76,7 +76,7 @@ def fill_venv(repo):
     venviron = "%s/.venv" % repo
     packages = cfg.items("packages")
     for package in packages:
-        package_name = package[1]
+        package_name = package[1] or package[0]
 
         # Check whether pip can't install it.
         if package[0] in FORCE_EASY_INSTALL or package_name in FORCE_EASY_INSTALL:
