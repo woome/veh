@@ -83,7 +83,11 @@ def fill_venv(repo):
             ez = _popencmd(["%s/.venv/bin/easy_install" % repo, package_name])
         else:
             # Use pip to install into the venv
-            pip = _popencmd(["pip", "install", "-E", venviron, package_name])
+            cmd = ["pip", "install", "-E", venviron]
+            if (cfg.has_option('pip', 'always-upgrade')
+                and cfg.getboolean('pip', 'always-upgrade')):
+                cmd.append('--upgrade')
+            pip = _popencmd(cmd + [package_name])
 
 def venv(repo):
     """Make the repos venv"""
