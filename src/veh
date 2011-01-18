@@ -146,6 +146,11 @@ CFG_TEMPLATE="""[packages]
 # or a vc reference:
 #   packagelabel = hg+http://domain/repo
 
+[pip]
+# supported options for pip:
+#   always-upgrade: true
+#   supply the --upgrade option to pip when building the virtualenv
+
 # End
 """
 
