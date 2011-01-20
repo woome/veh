@@ -295,7 +295,7 @@ class VehCmd(SysArgsCmd):
         venv(root)
         command = [os.environ["SHELL"], "--rcfile", "%s/.venv/.startup_rc" % root]
         if shellcmd:
-            command += ["-c", " ".join(shellcmd)]
+            command += ["-i", "-c", " ".join(shellcmd)]
         _popencmd(command)
 
     def do_noop(self, arg):
