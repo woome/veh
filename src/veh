@@ -283,6 +283,15 @@ class VehCmd(SysArgsCmd):
         root = self._getroot()
         fill_venv(root)
 
+    def do_cat(self, arg):
+        """Cat the veh config file"""
+        root = self._getroot()
+        cfgfile = "%s/.veh.conf" % root
+        if pathexists(cfgfile):
+            with open(cfgfile) as fd:
+                cfgcontent = fd.read()
+                sys.stdout.write(cfgcontent)
+
     def do_shell(self, shellcmd):
         """Start a shell inside the venv'd repository possibly running shellcmd.
 
@@ -290,9 +299,13 @@ class VehCmd(SysArgsCmd):
         if necessary.
 
         Changes directory and spawns the user's SHELL.
+
+        Sets the environment variable VEHACTIVE to the root of the
+        venv'd repository.
         """
         root = self._getroot()
         venv(root)
+        os.environ["VEHACTIVE"] = root
         command = [os.environ["SHELL"], "--rcfile", "%s/.venv/.startup_rc" % root]
         if shellcmd:
             command += ["-i", "-c", " ".join(shellcmd)]
