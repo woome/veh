@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with veh.  If not, see <http://www.gnu.org/licenses/>.
 
+__version__ = "0.7"
+
 import sys
 import os
 from ConfigParser import ConfigParser
@@ -34,7 +36,6 @@ class ConfigMissing(Exception):
 
 def _popencmd(cmd):
     """Simple Popen wrapper"""
-    print " ".join(cmd)
     p = Popen(cmd)
     p.wait()    
     return p
