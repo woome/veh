@@ -21,5 +21,6 @@ setup(
     download_url="http://github.com/nicferrier/veh/downloads",
     platforms = ["any"],
     scripts=['src/veh'],
-    classifiers =  classifiers
+    requires=['pip', 'virtualenv'],
+    classifiers =  classifiers,
     )
