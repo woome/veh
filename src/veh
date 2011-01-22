@@ -34,9 +34,9 @@ class ConfigMissing(Exception):
     pass
 
 
-def _popencmd(cmd):
+def _popencmd(cmd, env=None):
     """Simple Popen wrapper"""
-    p = Popen(cmd)
+    p = Popen(cmd, env=env)
     p.wait()    
     return p
 
@@ -308,9 +308,12 @@ class VehCmd(SysArgsCmd):
         venv(root)
         os.environ["VEHACTIVE"] = root
         command = [os.environ["SHELL"], "--rcfile", "%s/.venv/.startup_rc" % root]
+        env = None
         if shellcmd:
-            command += ["-i", "-c", " ".join(shellcmd)]
-        _popencmd(command)
+            env = os.environ.copy()
+            env["BASH_ENV"] = os.path.join(root, ".venv", "bin", "activate")
+            command += ["-c", " ".join(shellcmd)]
+        _popencmd(command, env=env)
 
     def do_noop(self, arg):
         """No-op. Just checks the virtualenv.
