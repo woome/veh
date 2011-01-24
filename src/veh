@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with veh.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import with_statement
 __version__ = "0.7"
 
 import sys
@@ -24,6 +25,12 @@ from ConfigParser import ConfigParser
 from os.path import exists as pathexists
 from os.path import splitext
 from subprocess import Popen
+import tempfile
+
+VENV_DIR = '.venvs'
+ACTIVEFILE = '.active'
+VENV_PREFIX = 'venv-'
+
 
 class Exists(Exception):
     """File exists"""
@@ -37,27 +44,92 @@ class ConfigMissing(Exception):
 def _popencmd(cmd, env=None):
     """Simple Popen wrapper"""
     p = Popen(cmd, env=env)
-    p.wait()    
+    p.wait()
     return p
+
+
+def _new_venv_path(repo):
+    basepth = "%s/%s" % (repo, VENV_DIR)
+    if not os.path.exists(basepth):
+        os.mkdir(basepth)
+    return tempfile.mktemp(prefix=VENV_PREFIX, dir=basepth)
+
+def _get_active_venv(repo):
+    venvdir = os.path.join(repo, VENV_DIR)
+    activefile = os.path.join(venvdir, ACTIVEFILE)
+    if not os.path.exists(activefile):
+        return None
+    f = open(activefile, 'r')
+    try:
+        reponame = f.read().strip()
+    finally:
+        f.close()
+    return os.path.join(venvdir, reponame)
+
+def _mark_venv_active(repo, venv):
+    name = os.path.basename(venv)
+    venvdir = os.path.join(repo, VENV_DIR)
+    activefile = os.path.join(venvdir, ACTIVEFILE)
+    tmpfile = "%s.tmp" % activefile
+    if os.path.exists(tmpfile):
+        raise Exception('tmpfile %r exists.' % tmpfile)
+    with open(tmpfile, 'w') as f:
+        f.write(name)
+    os.rename(tmpfile, activefile)
+
+def _get_inactive_venvs(repo):
+    venvdir = os.path.join(repo, VENV_DIR)
+    try:
+        dirs = os.walk(venvdir).next()[1]
+    except StopIteration, e:
+        return []
+    activevenv = _get_active_venv(repo)
+    if activevenv:
+        activevenv = os.path.basename(activevenv)
+        dirs = [i for i in dirs if i != activevenv]
+    dirs = [os.path.join(venvdir, i) for i in dirs if i != activevenv]
+    return dirs
 
 def make_venv(repo):
     """Make a virtualenv for the specified repo"""
     from os.path import expanduser
     # TODO read a user or site wide config file for whether to use virtualenvwrapper
     # could have a "make virtualenv config with a possible 'internal' value"
-    _popencmd(["virtualenv", "--no-site-packages", "%s/.venv" % repo])
-    with open("%s/.venv/.startup_rc" % repo, "w") as out:
+    venvpath = _new_venv_path(repo)
+    _popencmd(["virtualenv", "--no-site-packages", venvpath])
+    with open("%s/.startup_rc" % venvpath, "w") as out:
         print >>out, "source %s\nsource %s\n" % (
             expanduser("~/.bashrc"),
-            "%s/.venv/bin/activate" % repo
+            "%s/bin/activate" % venvpath
             )
+    _mark_venv_active(repo, venvpath)
 
+
+def _rm_r(dir):
+    "Recursively remove directory."
+    for r, dirs, files in os.walk(dir, topdown=False):
+        for fn in files:
+            os.remove(os.path.join(r, fn))
+        for dn in dirs:
+            full = os.path.join(r, dn)
+            if os.path.islink(full):
+                os.remove(full)
+            else:
+                os.rmdir(os.path.join(r, dn))
+    os.rmdir(dir)
+
+def cleanup_inactive_venvs(repo):
+    "Deletes inactive virtualenv directories."
+    dirs = _get_inactive_venvs(repo)
+    for dir in dirs:
+        sys.stdout.write("removing %s\n" % dir)
+        _rm_r(dir)
 
 # Packages that we should force easy_install for.
 # This should probably be configurable inside veh.
 FORCE_EASY_INSTALL = [
     "egenix-mx-base", # see http://bitbucket.org/ianb/pip/issue/40/package-egenix-mx-base-cant-be-installed-with
-    ]            
+    ]
 
 def fill_venv(repo):
     """Install packages into the venv.
@@ -319,7 +391,20 @@ class VehCmd(SysArgsCmd):
         """No-op. Just checks the virtualenv.
         """
         venv(self._getroot())
-        
+
+    def do_cleanup(self, arg):
+        root = self._getroot()
+        cleanup_inactive_venvs(root)
+
+    def do_lsvirtualenvs(self, arg):
+        """List active and inactive virtualenvs."""
+        root = self._getroot()
+        active = _get_active_venv(root)
+        if active:
+            sys.stdout.write("active - %s\n" % active)
+        for inactive in _get_inactive_venvs(root):
+            sys.stdout.write("inactive - %s\n" % inactive)
+
 
 def main():
     from optparse import OptionParser
