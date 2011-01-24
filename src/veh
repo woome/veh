@@ -19,6 +19,7 @@
 from __future__ import with_statement
 __version__ = "0.7"
 
+from cmd import Cmd
 import sys
 import os
 from ConfigParser import ConfigParser, NoSectionError, NoOptionError
@@ -35,6 +36,7 @@ VENV_PREFIX = 'venv-'
 class Exists(Exception):
     """File exists"""
     pass
+
 
 class ConfigMissing(Exception):
     """File exists"""
@@ -54,6 +56,7 @@ def _new_venv_path(repo):
         os.mkdir(basepth)
     return tempfile.mktemp(prefix=VENV_PREFIX, dir=basepth)
 
+
 def _get_active_venv(repo):
     venvdir = os.path.join(repo, VENV_DIR)
     activefile = os.path.join(venvdir, ACTIVEFILE)
@@ -62,11 +65,13 @@ def _get_active_venv(repo):
     repo = os.path.realpath(activefile)
     return repo
 
+
 def _clear_active(repo):
     venvdir = os.path.join(repo, VENV_DIR)
     activefile = os.path.join(venvdir, ACTIVEFILE)
     if os.path.exists(activefile):
         os.remove(activefile)
+
 
 def _mark_venv_active(repo, venv):
     venvdir = os.path.join(repo, VENV_DIR)
@@ -76,6 +81,7 @@ def _mark_venv_active(repo, venv):
         raise Exception('tmpfile %r exists.' % tmpfile)
     os.symlink(venv, tmpfile)
     os.rename(tmpfile, activefile)
+
 
 def _get_inactive_venvs(repo):
     venvdir = os.path.join(repo, VENV_DIR)
@@ -89,6 +95,7 @@ def _get_inactive_venvs(repo):
         dirs = [i for i in dirs if i != activevenv and i != ACTIVEFILE]
     dirs = [os.path.join(venvdir, i) for i in dirs]
     return dirs
+
 
 def make_venv(repo):
     """Make a virtualenv for the specified repo"""
@@ -119,6 +126,7 @@ def _rm_r(dir):
                 os.rmdir(os.path.join(r, dn))
     os.rmdir(dir)
 
+
 def cleanup_inactive_venvs(repo):
     "Deletes inactive virtualenv directories."
     dirs = _get_inactive_venvs(repo)
@@ -129,8 +137,9 @@ def cleanup_inactive_venvs(repo):
 # Packages that we should force easy_install for.
 # This should probably be configurable inside veh.
 FORCE_EASY_INSTALL = [
-    "egenix-mx-base", # see http://bitbucket.org/ianb/pip/issue/40/package-egenix-mx-base-cant-be-installed-with
+    "egenix-mx-base",  # see http://bitbucket.org/ianb/pip/issue/40/package-egenix-mx-base-cant-be-installed-with
     ]
+
 
 def get_config(repo):
     cfgfile = "%s/.veh.conf" % repo
@@ -140,6 +149,7 @@ def get_config(repo):
     cfg = ConfigParser()
     cfg.read(cfgfile)
     return cfg
+
 
 def fill_venv(repo):
     """Install packages into the venv.
@@ -167,6 +177,7 @@ def fill_venv(repo):
                 cmd.append('--upgrade')
             pip = _popencmd(cmd + [package_name])
 
+
 def venv(repo):
     """Make the repos venv"""
 
@@ -174,6 +185,7 @@ def venv(repo):
     if not venvdir or not pathexists(venvdir):
         fill_venv(repo)
     return venvdir
+
 
 def edit_file(filename):
     """Open the filename in the editor.
@@ -206,7 +218,7 @@ def edit_file(filename):
                 os.remove(filename)
             os.rename(tempfilename, filename)
 
-CFG_TEMPLATE="""[packages]
+CFG_TEMPLATE = """[packages]
 # enter package names here like
 #   packagelabel = packagename
 #
@@ -240,6 +252,7 @@ CFG_TEMPLATE="""[packages]
 # End
 """
 
+
 def install(repo):
     """Install a veh config file
 
@@ -252,6 +265,7 @@ def install(repo):
         raise Exists(cfgfile)
     edit_file(cfgfile)
 
+
 def edit(repo):
     """Edit the veh config file
 
@@ -262,8 +276,6 @@ def edit(repo):
     else:
         print >>sys.stderr, "%s does not exist" % cfgfile
 
-
-from cmd import Cmd
 
 class SysArgsCmd(Cmd):
     """Let's you use cmd with arg lists"""
@@ -281,6 +293,7 @@ class SysArgsCmd(Cmd):
     def do_help(self, arg):
         """A version of help that deals with the array args"""
         return Cmd.do_help(self, " ".join(arg))
+
 
 class VehCmd(SysArgsCmd):
     repo = None
@@ -329,7 +342,7 @@ class VehCmd(SysArgsCmd):
 
     def do_lspackages(self, arg):
         """List the packages specified in the veh config"""
-        
+
         root = self._getroot()
         cfg = get_config(root)
         for p in cfg.items("packages"):
@@ -433,7 +446,7 @@ def main():
         dest="root",
         help="specify the root of the veh protected repository"
         )
-    o,a = p.parse_args(sys.argv[1:])
+    o, a = p.parse_args(sys.argv[1:])
 
     # Make the processor
     cmdproc = VehCmd(**o.__dict__)
@@ -448,8 +461,7 @@ def main():
             sys.exit(ret)
 
 
-
-if __name__== "__main__":
+if __name__ == "__main__":
     main()
 
 # End
