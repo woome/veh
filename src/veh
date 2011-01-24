@@ -21,7 +21,7 @@ __version__ = "0.7"
 
 import sys
 import os
-from ConfigParser import ConfigParser
+from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 from os.path import exists as pathexists
 from os.path import splitext
 from subprocess import Popen
@@ -132,6 +132,15 @@ FORCE_EASY_INSTALL = [
     "egenix-mx-base", # see http://bitbucket.org/ianb/pip/issue/40/package-egenix-mx-base-cant-be-installed-with
     ]
 
+def get_config(repo):
+    cfgfile = "%s/.veh.conf" % repo
+    if not pathexists(cfgfile):
+        raise ConfigMissing(cfgfile)
+
+    cfg = ConfigParser()
+    cfg.read(cfgfile)
+    return cfg
+
 def fill_venv(repo):
     """Install packages into the venv.
 
@@ -140,13 +149,7 @@ def fill_venv(repo):
     if not venvdir or not pathexists(venvdir):
         venvdir = make_venv(repo)
 
-    cfgfile = "%s/.veh.conf" % repo
-    if not pathexists(cfgfile):
-        raise ConfigMissing(cfgfile)
-
-    cfg = ConfigParser()
-    cfg.read(cfgfile)
-
+    cfg = get_config(repo)
     # Install each package in the venv
     venviron = venvdir
     packages = cfg.items("packages")
@@ -221,9 +224,17 @@ CFG_TEMPLATE="""[packages]
 # or a vc reference:
 #   packagelabel = hg+http://domain/repo
 
+[veh]
+# supported options for veh:
+#  rebuilding creates a brand new virtualenv leaving the old in place.
+#  the following options controls whether the previously active virtualenv
+#  is deleted during rebuild or not:
+#   delete-on-rebuild = true
+
+
 [pip]
 # supported options for pip:
-#   always-upgrade: true
+#   always-upgrade = true
 #   supply the --upgrade option to pip when building the virtualenv
 
 # End
@@ -320,12 +331,7 @@ class VehCmd(SysArgsCmd):
         """List the packages specified in the veh config"""
         
         root = self._getroot()
-        cfgfile = "%s/.veh.conf" % root
-        if not pathexists(cfgfile):
-            raise ConfigMissing(cfgfile)
-
-        cfg = ConfigParser()
-        cfg.read(cfgfile)
+        cfg = get_config(root)
         for p in cfg.items("packages"):
             print "%s %s" % p
 
@@ -349,7 +355,17 @@ class VehCmd(SysArgsCmd):
     def do_rebuild(self, arg):
         """Rebuild the virtualenv."""
         root = self._getroot()
-        _clear_active(root)
+        cfg = get_config(root)
+        active = _get_active_venv(root)
+        if active:
+            _clear_active(root)
+            deleteold = False  # default value
+            try:
+                deleteold = cfg.getboolean('veh', 'delete-on-rebuild')
+            except (NoSectionError, NoOptionError), e:
+                pass
+            if deleteold:
+                _rm_r(active)
         # Rebuild it.
         venv(root)
 
