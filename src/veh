@@ -59,22 +59,16 @@ def _get_active_venv(repo):
     activefile = os.path.join(venvdir, ACTIVEFILE)
     if not os.path.exists(activefile):
         return None
-    f = open(activefile, 'r')
-    try:
-        reponame = f.read().strip()
-    finally:
-        f.close()
-    return os.path.join(venvdir, reponame)
+    repo = os.path.realpath(activefile)
+    return repo
 
 def _mark_venv_active(repo, venv):
-    name = os.path.basename(venv)
     venvdir = os.path.join(repo, VENV_DIR)
     activefile = os.path.join(venvdir, ACTIVEFILE)
     tmpfile = "%s.tmp" % activefile
     if os.path.exists(tmpfile):
         raise Exception('tmpfile %r exists.' % tmpfile)
-    with open(tmpfile, 'w') as f:
-        f.write(name)
+    os.symlink(venv, tmpfile)
     os.rename(tmpfile, activefile)
 
 def _get_inactive_venvs(repo):
@@ -86,8 +80,8 @@ def _get_inactive_venvs(repo):
     activevenv = _get_active_venv(repo)
     if activevenv:
         activevenv = os.path.basename(activevenv)
-        dirs = [i for i in dirs if i != activevenv]
-    dirs = [os.path.join(venvdir, i) for i in dirs if i != activevenv]
+        dirs = [i for i in dirs if i != activevenv and i != ACTIVEFILE]
+    dirs = [os.path.join(venvdir, i) for i in dirs]
     return dirs
 
 def make_venv(repo):
