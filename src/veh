@@ -329,7 +329,7 @@ class VehCmd(SysArgsCmd):
         root = self._getroot()
         active = _get_active_venv(root)
 
-        if os.path.abspath(venv) == os.path.abspath(active):
+        if active and os.path.abspath(venv) == os.path.abspath(active):
             print venv
         else:
             return 1
