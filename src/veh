@@ -62,6 +62,12 @@ def _get_active_venv(repo):
     repo = os.path.realpath(activefile)
     return repo
 
+def _clear_active(repo):
+    venvdir = os.path.join(repo, VENV_DIR)
+    activefile = os.path.join(venvdir, ACTIVEFILE)
+    if os.path.exists(activefile):
+        os.remove(activefile)
+
 def _mark_venv_active(repo, venv):
     venvdir = os.path.join(repo, VENV_DIR)
     activefile = os.path.join(venvdir, ACTIVEFILE)
@@ -343,6 +349,7 @@ class VehCmd(SysArgsCmd):
     def do_rebuild(self, arg):
         """Rebuild the virtualenv."""
         root = self._getroot()
+        _clear_active(root)
         # Rebuild it.
         venv(root)
 
