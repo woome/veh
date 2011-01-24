@@ -97,6 +97,7 @@ def make_venv(repo):
             "%s/bin/activate" % venvpath
             )
     _mark_venv_active(repo, venvpath)
+    return venvpath
 
 
 def _rm_r(dir):
@@ -129,8 +130,9 @@ def fill_venv(repo):
     """Install packages into the venv.
 
     Makes the venv if it needs to."""
-    if not pathexists("%s/.venv" % repo):
-        make_venv(repo)
+    venvdir = _get_active_venv(repo)
+    if not venvdir or not pathexists(venvdir):
+        venvdir = make_venv(repo)
 
     cfgfile = "%s/.veh.conf" % repo
     if not pathexists(cfgfile):
@@ -140,14 +142,14 @@ def fill_venv(repo):
     cfg.read(cfgfile)
 
     # Install each package in the venv
-    venviron = "%s/.venv" % repo
+    venviron = venvdir
     packages = cfg.items("packages")
     for package in packages:
         package_name = package[1] or package[0]
 
         # Check whether pip can't install it.
         if package[0] in FORCE_EASY_INSTALL or package_name in FORCE_EASY_INSTALL:
-            ez = _popencmd(["%s/.venv/bin/easy_install" % repo, package_name])
+            ez = _popencmd(["%s/bin/easy_install" % venvdir, package_name])
         else:
             # Use pip to install into the venv
             cmd = ["pip", "install", "-E", venviron]
@@ -159,10 +161,10 @@ def fill_venv(repo):
 def venv(repo):
     """Make the repos venv"""
 
-    venvdir = "%s/.venv" % repo
-    if not pathexists(venvdir):
+    venvdir = _get_active_venv(repo)
+    if not venvdir or not pathexists(venvdir):
         fill_venv(repo)
-    
+    return venvdir
 
 def edit_file(filename):
     """Open the filename in the editor.
@@ -302,8 +304,8 @@ class VehCmd(SysArgsCmd):
         """Report whether the repository has an associated veh.
         """
         root = self._getroot()
-        vehenv = "%s/.venv/bin/activate" % root
-        if pathexists(vehenv):
+        vehenv = _get_active_venv(root)
+        if vehenv and pathexists(vehenv):
             print root
         else:
             return 1
@@ -325,23 +327,22 @@ class VehCmd(SysArgsCmd):
         """Is the virtualenv active? print the path if it is."""
         venv = os.environ.get("VIRTUAL_ENV")
         root = self._getroot()
+        active = _get_active_venv(root)
 
-        if venv == "%s/.venv" % root:
+        if os.path.abspath(venv) == os.path.abspath(active):
             print venv
         else:
             return 1
 
     def do_clear(self, arg):
-        """Blow away the virtualenv."""
+        """Blow away the virtualenv(s)."""
         root = self._getroot()
         # delete the dir
-        _popencmd(["rm", "-rf", "%s/.venv" % root])
+        _popencmd(["rm", "-rf", os.path.join(root, VENV_DIR)])
 
     def do_rebuild(self, arg):
-        """Blow away and rebuild the virtualenv."""
+        """Rebuild the virtualenv."""
         root = self._getroot()
-        # delete the dir
-        _popencmd(["rm", "-rf", "%s/.venv" % root])
         # Rebuild it.
         venv(root)
 
@@ -371,13 +372,13 @@ class VehCmd(SysArgsCmd):
         venv'd repository.
         """
         root = self._getroot()
-        venv(root)
+        vmdir = venv(root)
         os.environ["VEHACTIVE"] = root
-        command = [os.environ["SHELL"], "--rcfile", "%s/.venv/.startup_rc" % root]
+        command = [os.environ["SHELL"], "--rcfile", "%s/.startup_rc" % vmdir]
         env = None
         if shellcmd:
             env = os.environ.copy()
-            env["BASH_ENV"] = os.path.join(root, ".venv", "bin", "activate")
+            env["BASH_ENV"] = os.path.join(vmdir, "bin", "activate")
             command += ["-c", " ".join(shellcmd)]
         _popencmd(command, env=env)
 
