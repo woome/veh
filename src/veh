@@ -206,7 +206,7 @@ def edit_file(filename):
     except Exception, e:
         print >>sys.stderr, "problem making temp file: " + str(e)
     else:
-        editor = os.environ.get("VISUAL", os.environ.get("EDITOR", "edit"))
+        editor = os.environ.get("VISUAL", os.environ.get("EDITOR", "editor"))
         try:
             p = Popen([editor, tempfilename])
             p.wait()
