@@ -502,8 +502,15 @@ Changes directory and spawns the user's SHELL.
 Sets the environment variable VEHACTIVE to the root of the
 venv'd repository.
 
-Beware: it is NOT possible to run a posix mode shell inside the virtualenv.
+Beware: it is NOT possible to run a posix mode shell inside the
+virtualenv with a command. This:
+
+  SHELL=/bin/sh veh shell -- ipython
+
+will NOT run ipython in the virtualenv.
 """
+        # It is not possible to use posix mode shells because posix
+        # shells do not run an rcfile on startup when given a command.
         root = self._getroot()
         vmdir = venv(root)
         _venvsh(root, vmdir, " ".join(shellcmd))
