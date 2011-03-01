@@ -27,7 +27,9 @@ from os.path import exists as pathexists
 from os.path import splitext
 from os.path import expanduser
 from subprocess import Popen
+from subprocess import PIPE
 import tempfile
+import re
 
 VENV_DIR = '.venvs'
 ACTIVEFILE = '.active'
@@ -44,9 +46,12 @@ class ConfigMissing(Exception):
     pass
 
 
-def _popencmd(cmd, env=None):
+# This flag controls certain sorts of logging
+_verbose = False
+
+def _popencmd(cmd, env=None, pipe=False):
     """Simple Popen wrapper"""
-    p = Popen(cmd, env=env)
+    p = Popen(cmd, env=env, stdout=PIPE if pipe else None)
     p.wait()
     return p
 
@@ -126,6 +131,27 @@ def _rm_r(dir):
                 os.rmdir(os.path.join(r, dn))
     os.rmdir(dir)
 
+def _venvsh(root, venvdir, shellcommand=None, pipe=False):
+    "Run the shellcommand inside the specified venv"
+    os.environ["VEHACTIVE"] = root
+
+    # When the shell is interactive we specify the venv's startup_rc file
+    # the venv startup_rc is 
+    command = [os.environ["SHELL"], "--rcfile", "%s/.startup_rc" % venvdir]
+    env = None
+    if shellcommand:
+        from os.path import basename
+        env = os.environ.copy()
+        activate_script = os.path.join(venvdir, "bin", "activate")
+        env["BASH_ENV"] = activate_script
+        env["ENV"] = activate_script
+        command += ["-c", shellcommand]
+
+    if _verbose:
+        print >>sys.stderr,  "running %s inside the venv %s in %s" % (command, venvdir, root)
+
+    return _popencmd(command, env=env, pipe=pipe)
+
 
 def cleanup_inactive_venvs(repo):
     "Deletes inactive virtualenv directories."
@@ -151,32 +177,71 @@ def get_config(repo):
     return cfg
 
 
+PIP_VERSION_RE=re.compile("(?P<packagename>[^=]+)==(?P<version>[0-9.]+)")
+
+def _pip_freeze(root, venv):
+    """Runs pip freeze in the specified virtual env.
+
+    Returns a list of packages with the key the packagename and the
+    value the version.
+    """
+    process = _venvsh(root, venv, "pip freeze", pipe=True)
+    stdout, stderr = process.communicate()
+    specs = stdout.split("\n")
+    packages = {}
+    for spec in specs:
+        if spec:
+            m = PIP_VERSION_RE.match(spec)
+            if m:
+                packages[m.group("packagename")] = m.group("version")
+    return packages
+
+# This variable controls whether we check inside virtualenvs for version differences
+# It's not necessary since we use PIP inside the venv now and that checks
+VIRTUALENV_VERSION_PEEKING = False
+
 def fill_venv(repo):
     """Install packages into the venv.
 
-    Makes the venv if it needs to."""
+    Makes the venv if it needs to.
+    """
     venvdir = _get_active_venv(repo)
     if not venvdir or not pathexists(venvdir):
         venvdir = make_venv(repo)
 
     cfg = get_config(repo)
+
+    installed_list = {}
+
     # Install each package in the venv
     venviron = venvdir
     packages = cfg.items("packages")
     for package in packages:
         package_name = package[1] or package[0]
 
+        # Have you already got installed the version that is being requested
+        if VIRTUALENV_VERSION_PEEKING:
+            if not installed_list:
+                installed_list = _pip_freeze(repo, venvdir) 
+            packagespec = PIP_VERSION_RE.match(package_name)
+            if packagespec:
+                if packagespec.group("version") == installed_list[packagespec.group("packagename")]:
+                    continue
+
         # Check whether pip can't install it.
         if package[0] in FORCE_EASY_INSTALL or package_name in FORCE_EASY_INSTALL:
-            ez = _popencmd(["%s/bin/easy_install" % venvdir, package_name])
+            ez_command = "easy_install %s" % package_name
+            ez = _venvsh(repo, venvdir, ez_command)
         else:
             # Use pip to install into the venv
-            cmd = ["pip", "install", "-v", "-E", venviron]
+            cmd = "pip install -v"
 
             # Some things that you can specify about pip with veh config
             if (cfg.has_option('pip', 'always-upgrade')
                 and cfg.getboolean('pip', 'always-upgrade')):
-                cmd.append('--upgrade')
+                ## FIXME we've turned this off now we're using pip inside the venv
+                #cmd += ' --upgrade'
+                pass
 
             if cfg.has_option("pip", "download-cache"):
                 cachedir = expanduser(cfg.get("pip", "download-cache"))
@@ -186,9 +251,10 @@ def fill_venv(repo):
                 except:
                     print >>sys.stderr, "%s does not exist but cannot be created" % cachedir
                 else:
-                    cmd.append("--download-cache=%s" % cachedir)
+                    cmd += " --download-cache=%s" % cachedir
 
-            pip = _popencmd(cmd + [package_name])
+            pip_command = cmd + " " + package_name
+            pip = _venvsh(repo, venvdir, pip_command)
 
 
 def venv(repo):
@@ -317,6 +383,8 @@ class VehCmd(SysArgsCmd):
         from StringIO import StringIO
         Cmd.__init__(self, StringIO())
         self.opts = kwargs
+        global _verbose
+        _verbose=self.opts.get("verbose", False)
 
     def _findroot(self):
         import subprocess
@@ -335,13 +403,15 @@ class VehCmd(SysArgsCmd):
 
     def do_install(self, arg):
         """Install a virtualenv for the repository.
-        Actually installs just the config file. The venv is made on first use.
+
+Actually installs just the config file. The venv is made on first use.
         """
         install(self._getroot())
 
     def do_edit(self, arg):
         """Edit the repositorys veh config file.
-        Opens VISUAL or EDITOR or /usr/bin/edit on your repositorys config file.
+
+Opens VISUAL or EDITOR or /usr/bin/edit on your repositorys config file.
         """
         edit(self._getroot())
 
@@ -381,7 +451,10 @@ class VehCmd(SysArgsCmd):
         _popencmd(["rm", "-rf", os.path.join(root, VENV_DIR)])
 
     def do_rebuild(self, arg):
-        """Rebuild the virtualenv."""
+        """Rebuild the virtualenv.
+
+This builds a new virtualenv from scratch. The old virtualenv is not
+affected at all."""
         root = self._getroot()
         cfg = get_config(root)
         active = _get_active_venv(root)
@@ -398,7 +471,14 @@ class VehCmd(SysArgsCmd):
         venv(root)
 
     def do_refresh(self, arg):
-        """Refresh all packages"""
+        """Refresh all packages.
+
+Packages that don't exist in the currently active virtual env are
+retrieved. 
+
+Packages that differ in version to the current install are also
+reinstalled.
+"""
         root = self._getroot()
         fill_venv(root)
 
@@ -414,24 +494,17 @@ class VehCmd(SysArgsCmd):
     def do_shell(self, shellcmd):
         """Start a shell inside the venv'd repository possibly running shellcmd.
 
-        First checks that the virtualenv for the repository has been built and builds
-        if necessary.
+First checks that the virtualenv for the repository has been built and builds
+if necessary.
 
-        Changes directory and spawns the user's SHELL.
+Changes directory and spawns the user's SHELL.
 
-        Sets the environment variable VEHACTIVE to the root of the
-        venv'd repository.
+Sets the environment variable VEHACTIVE to the root of the
+venv'd repository.
         """
         root = self._getroot()
         vmdir = venv(root)
-        os.environ["VEHACTIVE"] = root
-        command = [os.environ["SHELL"], "--rcfile", "%s/.startup_rc" % vmdir]
-        env = None
-        if shellcmd:
-            env = os.environ.copy()
-            env["BASH_ENV"] = os.path.join(vmdir, "bin", "activate")
-            command += ["-c", " ".join(shellcmd)]
-        _popencmd(command, env=env)
+        _venvsh(root, vmdir, " ".join(shellcmd))
 
     def do_noop(self, arg):
         """No-op. Just checks the virtualenv.
@@ -439,6 +512,7 @@ class VehCmd(SysArgsCmd):
         venv(self._getroot())
 
     def do_cleanup(self, arg):
+        """Cleanup inactive virtual environments"""
         root = self._getroot()
         cleanup_inactive_venvs(root)
 
@@ -461,6 +535,14 @@ def main():
         dest="root",
         help="specify the root of the veh protected repository"
         )
+    p.add_option(
+        "-v",
+        "--verbose",
+        action="store_true",
+        dest="verbose",
+        help="verbose flag"
+        )
+
     o, a = p.parse_args(sys.argv[1:])
 
     # Make the processor
