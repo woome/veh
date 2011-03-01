@@ -501,7 +501,9 @@ Changes directory and spawns the user's SHELL.
 
 Sets the environment variable VEHACTIVE to the root of the
 venv'd repository.
-        """
+
+Beware: it is NOT possible to run a posix mode shell inside the virtualenv.
+"""
         root = self._getroot()
         vmdir = venv(root)
         _venvsh(root, vmdir, " ".join(shellcmd))
