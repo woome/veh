@@ -263,6 +263,7 @@ def venv(repo):
     venvdir = _get_active_venv(repo)
     if not venvdir or not pathexists(venvdir):
         fill_venv(repo)
+        venvdir = _get_active_venv(repo)
     return venvdir
 
 
@@ -439,7 +440,7 @@ Opens VISUAL or EDITOR or /usr/bin/edit on your repositorys config file.
         root = self._getroot()
         active = _get_active_venv(root)
 
-        if active and os.path.abspath(venv) == os.path.abspath(active):
+        if active and venv and os.path.abspath(venv) == os.path.abspath(active):
             print venv
         else:
             return 1
@@ -511,6 +512,8 @@ will NOT run ipython in the virtualenv.
 """
         # It is not possible to use posix mode shells because posix
         # shells do not run an rcfile on startup when given a command.
+        import pdb
+        pdb.set_trace()
         root = self._getroot()
         vmdir = venv(root)
         _venvsh(root, vmdir, " ".join(shellcmd))
