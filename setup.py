@@ -11,7 +11,7 @@ classifiers = [
 
 setup(
     name = "veh",
-    version = "0.81",
+    version = "0.82",
     description = "virtualenv for hg",
     long_description = """Tie virtualenvs to individual mercurial repositorys.""",
     license = "GNU GPL v3",

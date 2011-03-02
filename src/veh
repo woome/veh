@@ -512,8 +512,6 @@ will NOT run ipython in the virtualenv.
 """
         # It is not possible to use posix mode shells because posix
         # shells do not run an rcfile on startup when given a command.
-        import pdb
-        pdb.set_trace()
         root = self._getroot()
         vmdir = venv(root)
         _venvsh(root, vmdir, " ".join(shellcmd))
