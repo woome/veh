@@ -31,6 +31,8 @@ from subprocess import PIPE
 import tempfile
 import re
 
+from veh import clone
+
 VENV_DIR = '.venvs'
 ACTIVEFILE = '.active'
 VENV_PREFIX = 'venv-'
@@ -551,6 +553,22 @@ will NOT run ipython in the virtualenv.
             sys.stdout.write("active - %s\n" % active)
         for inactive in _get_inactive_venvs(root):
             sys.stdout.write("inactive - %s\n" % inactive)
+
+    def do_clone(self, arg):
+        root = self._getroot()
+        active = _get_active_venv(root)
+        if not active:
+            print >> sys.stdout, "no active venv to clone"
+            sys.exit(1)
+        newvenv = _new_venv_path(root)
+        try:
+            clone.clone_virtualenv(active, newvenv)
+        except Exception, e:
+            if os.path.exists(newvenv):
+                _rm_r(newvenv)
+            print >> sys.stdout, "cloning active virtualenv failed"
+            sys.exit(1)
+        _mark_venv_active(root, newvenv)
 
 
 def main():

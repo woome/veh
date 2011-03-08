@@ -43,6 +43,7 @@ __version__ = '.'.join(map(str, version_info))
 
 
 logger = logging.getLogger()
+logging.basicConfig(level=logging.WARNING)
 
 
 def _dirmatch(path, matchwith):
@@ -231,5 +232,4 @@ if __name__ == '__main__':
     old_dir, new_dir = sys.argv[1:]
     old_dir = os.path.normpath(os.path.abspath(old_dir))
     new_dir = os.path.normpath(os.path.abspath(new_dir))
-    logging.basicConfig(level=logging.WARNING)
     clone_virtualenv(old_dir, new_dir)
