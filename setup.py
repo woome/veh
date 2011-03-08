@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 
 classifiers = [
     'Development Status :: 3 - Alpha',
@@ -11,7 +11,7 @@ classifiers = [
 
 setup(
     name = "veh",
-    version = "0.82",
+    version = "0.83",
     description = "virtualenv for hg",
     long_description = """Tie virtualenvs to individual mercurial repositorys.""",
     license = "GNU GPL v3",

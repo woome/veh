@@ -132,19 +132,36 @@ def _rm_r(dir):
     os.rmdir(dir)
 
 def _venvsh(root, venvdir, shellcommand=None, pipe=False):
-    "Run the shellcommand inside the specified venv"
-    os.environ["VEHACTIVE"] = root
+    """Run the shellcommand inside the specified venv.
 
-    # When the shell is interactive we specify the venv's startup_rc file
-    # the venv startup_rc is 
-    command = [os.environ["SHELL"], "--rcfile", "%s/.startup_rc" % venvdir]
+    If the shellcommand is None then a new interactive shell is
+    created.
+
+    The shell used is whatever is in os.environ["SHELL"] at the time.
+
+    If the virtualenv is not active then it is activated to run the
+    shell, interactive or otherwise.
+    """
+
+    command = [os.environ["SHELL"]]
     env = None
+    
+    if os.environ.get("VEHACTIVE", None) != root:
+        os.environ["VEHACTIVE"] = root
+
+        # When the shell is interactive we specify the venv's startup_rc file
+        # the venv startup_rc is 
+        command += ["--rcfile", "%s/.startup_rc" % venvdir]
+
+        if shellcommand:
+            from os.path import basename
+            env = os.environ.copy()
+            activate_script = os.path.join(venvdir, "bin", "activate")
+            env["BASH_ENV"] = activate_script
+            env["ENV"] = activate_script
+    
+    # Add the shell command if we have one
     if shellcommand:
-        from os.path import basename
-        env = os.environ.copy()
-        activate_script = os.path.join(venvdir, "bin", "activate")
-        env["BASH_ENV"] = activate_script
-        env["ENV"] = activate_script
         command += ["-c", shellcommand]
 
     if _verbose:
