@@ -1,5 +1,7 @@
 from setuptools import setup
 
+from veh import __version__
+
 classifiers = [
     'Development Status :: 3 - Alpha',
     'Intended Audience :: Developers',
@@ -11,7 +13,7 @@ classifiers = [
 
 setup(
     name = "veh",
-    version = "0.83",
+    version = __version__,
     description = "virtualenv for hg",
     long_description = """Tie virtualenvs to individual mercurial repositorys.""",
     license = "GNU GPL v3",
