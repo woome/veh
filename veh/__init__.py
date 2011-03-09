@@ -26,6 +26,7 @@ from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 from os.path import exists as pathexists
 from os.path import splitext
 from os.path import expanduser
+from StringIO import StringIO
 from subprocess import Popen
 from subprocess import PIPE
 import tempfile
