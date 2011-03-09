@@ -235,7 +235,7 @@ def _pip_freeze(root, venv):
 # It's not necessary since we use PIP inside the venv now and that checks
 VIRTUALENV_VERSION_PEEKING = False
 
-def fill_venv(repo):
+def fill_venv(repo, cfg=cfg):
     """Install packages into the venv.
 
     Makes the venv if it needs to.
@@ -244,7 +244,8 @@ def fill_venv(repo):
     if not venvdir or not pathexists(venvdir):
         venvdir = make_venv(repo)
 
-    cfg = get_config(repo)
+    if cfg is None:
+        cfg = get_config(repo)
 
     installed_list = {}
 
@@ -292,12 +293,12 @@ def fill_venv(repo):
             pip = _venvsh(repo, venvdir, pip_command)
 
 
-def venv(repo):
+def venv(repo, cfg=None):
     """Make the repos venv"""
 
     venvdir = _get_active_venv(repo)
     if not venvdir or not pathexists(venvdir):
-        fill_venv(repo)
+        fill_venv(repo, cfg=cfg)
         venvdir = _get_active_venv(repo)
     return venvdir
 
