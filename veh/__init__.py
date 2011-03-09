@@ -17,7 +17,7 @@
 # along with veh.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import with_statement
-__version__ = "0.84"
+__version__ = "0.85"
 
 from cmd import Cmd
 import sys
@@ -152,7 +152,7 @@ def _venvsh(root, venvdir, shellcommand=None, pipe=False):
     env = None
 
     if os.environ.get("VEHACTIVE", None) != root:
-        env = {}
+        env = os.environ.copy()
         env["VEHACTIVE"] = root
 
         # When the shell is interactive we specify the venv's startup_rc file
