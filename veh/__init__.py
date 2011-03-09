@@ -235,7 +235,7 @@ def _pip_freeze(root, venv):
 # It's not necessary since we use PIP inside the venv now and that checks
 VIRTUALENV_VERSION_PEEKING = False
 
-def fill_venv(repo, cfg=cfg):
+def fill_venv(repo, cfg=None):
     """Install packages into the venv.
 
     Makes the venv if it needs to.
