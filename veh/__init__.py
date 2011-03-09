@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # Copyright (C) 2010 by WooMe.com
 # Author: Nic Ferrier, <nferrier@woome.com>
