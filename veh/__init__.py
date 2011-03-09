@@ -150,21 +150,21 @@ def _venvsh(root, venvdir, shellcommand=None, pipe=False):
 
     command = [os.environ["SHELL"]]
     env = None
-    
+
     if os.environ.get("VEHACTIVE", None) != root:
-        os.environ["VEHACTIVE"] = root
+        env = {}
+        env["VEHACTIVE"] = root
 
         # When the shell is interactive we specify the venv's startup_rc file
-        # the venv startup_rc is 
+        # the venv startup_rc is
         command += ["--rcfile", "%s/.startup_rc" % venvdir]
 
         if shellcommand:
             from os.path import basename
-            env = os.environ.copy()
             activate_script = os.path.join(venvdir, "bin", "activate")
             env["BASH_ENV"] = activate_script
             env["ENV"] = activate_script
-    
+
     # Add the shell command if we have one
     if shellcommand:
         command += ["-c", shellcommand]
