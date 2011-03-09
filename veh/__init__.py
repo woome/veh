@@ -32,7 +32,7 @@ from subprocess import PIPE
 import tempfile
 import re
 
-from mercurial import hg, ui
+from mercurial import hg, ui, error
 
 from veh import clone
 
