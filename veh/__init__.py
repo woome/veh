@@ -17,7 +17,7 @@
 # along with veh.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import with_statement
-__version__ = "0.85"
+__version__ = "0.86"
 
 from cmd import Cmd
 import sys
@@ -573,6 +573,7 @@ will NOT run ipython in the virtualenv.
             sys.stdout.write("inactive - %s\n" % inactive)
 
     def do_clone(self, arg):
+        """Make a copy of the specified virtualenv"""
         root = self._getroot()
         active = _get_active_venv(root)
         if not active:
@@ -605,8 +606,20 @@ def main():
         dest="verbose",
         help="verbose flag"
         )
+    p.add_option(
+        "-V",
+        "--version",
+        action="store_true",
+        dest="version",
+        help="show the current version"
+        )
 
     o, a = p.parse_args(sys.argv[1:])
+
+    # Print the version if necessary
+    if o.__dict__["version"]:
+        print __version__
+        sys.exit(0)
 
     # Make the processor
     cmdproc = VehCmd(**o.__dict__)
