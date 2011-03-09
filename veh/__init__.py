@@ -31,6 +31,8 @@ from subprocess import PIPE
 import tempfile
 import re
 
+from mercurial import hg, ui
+
 from veh import clone
 
 VENV_DIR = '.venvs'
@@ -186,13 +188,26 @@ FORCE_EASY_INSTALL = [
     ]
 
 
-def get_config(repo):
-    cfgfile = "%s/.veh.conf" % repo
-    if not pathexists(cfgfile):
+def get_config(repo, rev=None):
+    # NOTE: rev = None in the mercurial api will give you the working dir.
+    u = ui.ui()
+    try:
+        repo = hg.repository(u, repo)
+    except error.RepoError, e:
+        # repo not found
+        raise
+    try:
+        cfgdata = repo[rev]['.veh.conf'].data()
+    except error.RepoLookupError, e:
+        # revision not found
+        raise
+    except error.LookupError, e:
+        # config not found
+        cfgfile = os.path.join(repo.root, '.veh.conf')
         raise ConfigMissing(cfgfile)
 
     cfg = ConfigParser()
-    cfg.read(cfgfile)
+    cfg.readfp(StringIO(cfgdata), '.veh.conf')
     return cfg
 
 
@@ -476,7 +491,7 @@ Opens VISUAL or EDITOR or /usr/bin/edit on your repositorys config file.
 This builds a new virtualenv from scratch. The old virtualenv is not
 affected at all."""
         root = self._getroot()
-        cfg = get_config(root)
+        cfg = get_config(root, *arg[:1])
         active = _get_active_venv(root)
         if active:
             _clear_active(root)
@@ -488,7 +503,7 @@ affected at all."""
             if deleteold:
                 _rm_r(active)
         # Rebuild it.
-        venv(root)
+        venv(root, cfg)
 
     def do_refresh(self, arg):
         """Refresh all packages.
@@ -500,7 +515,8 @@ Packages that differ in version to the current install are also
 reinstalled.
 """
         root = self._getroot()
-        fill_venv(root)
+        cfg = get_config(root, *arg[:1])
+        fill_venv(root, cfg=cfg)
 
     def do_cat(self, arg):
         """Cat the veh config file"""
