@@ -17,7 +17,7 @@
 # along with veh.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import with_statement
-__version__ = "0.86"
+__version__ = "0.87"
 
 from cmd import Cmd
 import sys
@@ -507,17 +507,29 @@ affected at all."""
         # Rebuild it.
         venv(root, cfg)
 
-    def do_refresh(self, arg):
-        """Refresh all packages.
+    def do_refresh(self, revision):
+        """Refresh all packages, optionally from a specific version or tag.
 
 Packages that don't exist in the currently active virtual env are
 retrieved. 
 
 Packages that differ in version to the current install are also
 reinstalled.
+
+With an argyment, reads the veh.conf from the revision or tag specified, thus:
+
+  veh refresh tip
+
+will read from tip, and:
+
+  veh refresh release_20110201
+
+will read the veh.conf packages from the version marked with the tag 'release_20110201'.
+
+No revision means the working copy will be read for the veh.conf
 """
         root = self._getroot()
-        cfg = get_config(root, *arg[:1])
+        cfg = get_config(root, *revision[:1])
         fill_venv(root, cfg=cfg)
 
     def do_cat(self, arg):
@@ -587,6 +599,15 @@ will NOT run ipython in the virtualenv.
                 _rm_r(newvenv)
             print >> sys.stdout, "cloning active virtualenv failed"
             sys.exit(1)
+
+        # Now rewrite the startup rc file
+        with open("%s/.startup_rc" % newvenv, "w") as out:
+            print >>out, "source %s\nsource %s\n" % (
+                expanduser("~/.bashrc"),
+                "%s/bin/activate" % newvenv
+                )
+
+        # ... and finally mark it as the active one
         _mark_venv_active(root, newvenv)
 
 
