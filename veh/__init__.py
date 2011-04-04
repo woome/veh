@@ -17,7 +17,7 @@
 # along with veh.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import with_statement
-__version__ = "0.87"
+__version__ = "0.88"
 
 from cmd import Cmd
 import sys
@@ -115,10 +115,13 @@ def make_venv(repo):
     venvpath = _new_venv_path(repo)
     _popencmd(["virtualenv", "--no-site-packages", venvpath])
     with open("%s/.startup_rc" % venvpath, "w") as out:
-        print >>out, "source %s\nsource %s\n" % (
-            expanduser("~/.bashrc"),
-            "%s/bin/activate" % venvpath
-            )
+        try:
+            f = filter(os.path.exists, map(expanduser, ['~/.bashrc', '~/.bash_profile']))
+            f = f[0] if f else None
+            print >>out, "source %s\nsource %s\n" % (
+                f, "%s/bin/activate" % venvpath)
+        except:
+            pass
     _mark_venv_active(repo, venvpath)
     return venvpath
 
