@@ -26,6 +26,7 @@ from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 from os.path import exists as pathexists
 from os.path import splitext
 from os.path import expanduser
+import pipes
 from StringIO import StringIO
 from subprocess import Popen
 from subprocess import PIPE
@@ -567,7 +568,7 @@ will NOT run ipython in the virtualenv.
         # shells do not run an rcfile on startup when given a command.
         root = self._getroot()
         vmdir = venv(root)
-        _venvsh(root, vmdir, " ".join(shellcmd), exec_=True)
+        _venvsh(root, vmdir, " ".join(map(pipes.quote, shellcmd)), exec_=True)
 
     def do_noop(self, arg):
         """No-op. Just checks the virtualenv.
