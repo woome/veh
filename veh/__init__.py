@@ -26,6 +26,7 @@ from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 from os.path import exists as pathexists
 from os.path import splitext
 from os.path import expanduser
+import pipes
 from StringIO import StringIO
 from subprocess import Popen
 from subprocess import PIPE
@@ -139,7 +140,7 @@ def _rm_r(dir):
                 os.rmdir(os.path.join(r, dn))
     os.rmdir(dir)
 
-def _venvsh(root, venvdir, shellcommand=None, pipe=False):
+def _venvsh(root, venvdir, shellcommand=None, exec_=False, pipe=False):
     """Run the shellcommand inside the specified venv.
 
     If the shellcommand is None then a new interactive shell is
@@ -151,7 +152,8 @@ def _venvsh(root, venvdir, shellcommand=None, pipe=False):
     shell, interactive or otherwise.
     """
 
-    command = [os.environ["SHELL"]]
+    sh = os.environ['SHELL']
+    command = [sh]
     env = None
 
     if os.environ.get("VEHACTIVE", None) != root:
@@ -175,7 +177,10 @@ def _venvsh(root, venvdir, shellcommand=None, pipe=False):
     if _verbose:
         print >>sys.stderr,  "running %s inside the venv %s in %s" % (command, venvdir, root)
 
-    return _popencmd(command, env=env, pipe=pipe)
+    if exec_:
+        os.execve(sh, command, env)
+    else:
+        return _popencmd(command, env=env, pipe=pipe)
 
 
 def cleanup_inactive_venvs(repo):
@@ -566,7 +571,7 @@ will NOT run ipython in the virtualenv.
         # shells do not run an rcfile on startup when given a command.
         root = self._getroot()
         vmdir = venv(root)
-        _venvsh(root, vmdir, " ".join(shellcmd))
+        _venvsh(root, vmdir, " ".join(map(pipes.quote, shellcmd)), exec_=True)
 
     def do_noop(self, arg):
         """No-op. Just checks the virtualenv.
