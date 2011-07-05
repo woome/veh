@@ -114,14 +114,18 @@ def make_venv(repo):
     # could have a "make virtualenv config with a possible 'internal' value"
     venvpath = _new_venv_path(repo)
     _popencmd(["virtualenv", "--no-site-packages", venvpath])
+    write_startup_rc(venvpath)
+    _mark_venv_active(repo, venvpath)
+    return venvpath
+
+
+def write_startup_rc(venvpath):
     with open("%s/.startup_rc" % venvpath, "w") as out:
         if sys.platform != 'darwin' and os.path.exists(expanduser("~/.bashrc")):
             print >>out , "source %s\n" % expanduser("~/.bashrc")
         elif sys.platform == 'darwin' and os.path.exists(expanduser("~/.bash_profile")):
             print >>out , "source %s\n" % expanduser("~/.bash_profile")
         print >>out , "source %s\n" % ("%s/bin/activate" % venvpath)
-    _mark_venv_active(repo, venvpath)
-    return venvpath
 
 
 def _rm_r(dir):
@@ -606,11 +610,7 @@ will NOT run ipython in the virtualenv.
             sys.exit(1)
 
         # Now rewrite the startup rc file
-        with open("%s/.startup_rc" % newvenv, "w") as out:
-            print >>out, "source %s\nsource %s\n" % (
-                expanduser("~/.bashrc"),
-                "%s/bin/activate" % newvenv
-                )
+        write_startup_rc(newvenv)
 
         # ... and finally mark it as the active one
         _mark_venv_active(root, newvenv)
