@@ -17,7 +17,7 @@
 # along with veh.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import with_statement
-__version__ = "0.89"
+__version__ = "0.90.0"
 
 from cmd import Cmd
 import sys
