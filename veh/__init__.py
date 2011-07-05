@@ -179,7 +179,7 @@ def _venvsh(root, venvdir, shellcommand=None, exec_=False, pipe=False):
         print >>sys.stderr,  "running %s inside the venv %s in %s" % (command, venvdir, root)
 
     if exec_:
-        os.execve(sh, command, env)
+        os.execve(sh, command, env if env is not None else os.environ.copy())
     else:
         return _popencmd(command, env=env, pipe=pipe)
 
