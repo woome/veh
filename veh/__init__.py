@@ -17,7 +17,7 @@
 # along with veh.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import with_statement
-__version__ = "0.90.0"
+__version__ = "0.91.0"
 
 from cmd import Cmd
 import sys
@@ -31,8 +31,6 @@ from subprocess import Popen
 from subprocess import PIPE
 import tempfile
 import re
-
-from mercurial import hg, ui, error
 
 from veh import clone
 
@@ -49,6 +47,24 @@ class Exists(Exception):
 class ConfigMissing(Exception):
     """File exists"""
     pass
+
+
+def find_root_with_file(filename, start):
+    """Walk UP the filesystem looking for filename.
+
+filename -- is the filename to search for (not a pattern).
+start -- is the location to start from. 
+
+Raises an Exception if we get to / without finding filename.
+"""
+    fulldir = os.path.abspath(start)
+    files = os.listdir(fulldir)
+    if not filename in files:
+        newdir = os.path.dirname(fulldir)
+        if newdir == "/":
+            raise Exception("not found")
+        return find_root_with_file(filename, newdir)
+    return fulldir
 
 
 # This flag controls certain sorts of logging
@@ -199,26 +215,45 @@ FORCE_EASY_INSTALL = [
 
 
 def get_config(repo, rev=None):
-    # NOTE: rev = None in the mercurial api will give you the working dir.
-    u = ui.ui()
-    try:
-        repo = hg.repository(u, repo)
-    except error.RepoError, e:
-        # repo not found
-        raise
-    try:
-        cfgdata = repo[rev]['.veh.conf'].data()
-    except error.RepoLookupError, e:
-        # revision not found
-        raise
-    except error.LookupError, e:
-        # config not found
-        cfgfile = os.path.join(repo.root, '.veh.conf')
-        raise ConfigMissing(cfgfile)
+    """Get the config from the veh root.
 
-    cfg = ConfigParser()
-    cfg.readfp(StringIO(cfgdata), '.veh.conf')
-    return cfg
+Using a specified rev only works on Mercurial repos right now."""
+    if not rev:
+        repo_root = find_root_with_file(".veh.conf", repo)
+        cfgfile = os.path.join(repo_root, '.veh.conf')
+        if not pathexists(cfgfile):
+            raise ConfigMissing(cfgfile)
+
+        with open(cfgfile) as fd:
+            cfg = ConfigParser()
+            cfg.readfp(fd, '.veh.conf')
+
+        return cfg
+
+    else:
+        # This obviously needs fixing to be DVCS agnostic
+
+        from mercurial import hg, ui, error
+        # NOTE: rev = None in the mercurial api will give you the working dir.
+        u = ui.ui()
+        try:
+            repo = hg.repository(u, repo)
+        except error.RepoError, e:
+            # repo not found
+            raise
+        try:
+            cfgdata = repo[rev]['.veh.conf'].data()
+        except error.RepoLookupError, e:
+            # revision not found
+            raise
+        except error.LookupError, e:
+            # config not found
+            cfgfile = os.path.join(repo.root, '.veh.conf')
+            raise ConfigMissing(cfgfile)
+
+        cfg = ConfigParser()
+        cfg.readfp(StringIO(cfgdata), '.veh.conf')
+        return cfg
 
 
 PIP_VERSION_RE=re.compile("(?P<packagename>[^=]+)==(?P<version>[0-9.]+)")
@@ -422,6 +457,7 @@ class SysArgsCmd(Cmd):
         return Cmd.do_help(self, " ".join(arg))
 
 
+
 class VehCmd(SysArgsCmd):
     repo = None
 
@@ -433,11 +469,8 @@ class VehCmd(SysArgsCmd):
         _verbose=self.opts.get("verbose", False)
 
     def _findroot(self):
-        import subprocess
-        p = subprocess.Popen(["hg", "root"], stdout=subprocess.PIPE)
-        p.wait()
-        hgroot = p.communicate()[0]
-        return hgroot.strip()
+        """It would be better to walk the tree looking for .veh.conf"""
+        return find_root_with_file(".veh.conf", os.getcwd())
 
     def _getroot(self):
         from os.path import realpath
