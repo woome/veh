@@ -470,7 +470,11 @@ class VehCmd(SysArgsCmd):
 
     def _findroot(self):
         """It would be better to walk the tree looking for .veh.conf"""
-        return find_root_with_file(".veh.conf", os.getcwd())
+        try:
+            foundroot = find_root_with_file(".veh.conf", os.getcwd())
+        except:
+            return os.getcwd()
+        return foundroot
 
     def _getroot(self):
         from os.path import realpath
